@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+beautifulsoup4 = "==4.12.3"
+chromedriver-autoinstaller = "==0.6.4"
+qdrant-client = {extras = ["fastembed"], version = "==1.11.0"}
+lxml = "==5.3.0"
+openai = "==1.52.2"
+selenium = "==4.25.0"
+sentence-transformers = "==3.0.1"
+
+[dev-packages]
+black = "*"
+isort = "*"
+
+[requires]
+python_version = "3.11"
+
+[pipenv]
+allow_prereleases = true

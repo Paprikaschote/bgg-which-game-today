@@ -1,0 +1,16 @@
+[tool.black]
+line-length = 88
+exclude = '''
+    /\.git/
+  | /\.pytest_cache/
+  | /__pycache__/
+  | /versions/
+'''
+
+[tool.isort]
+known_first_party = ["src"]
+profile = "black"
+line_length = 88
+lines_after_imports = 2
+lines_between_sections = 1
+src_paths = "src"
