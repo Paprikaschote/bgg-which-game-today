@@ -41,7 +41,7 @@ class Qdrant:
     def insert_collection(self, with_expansions: bool = False):
         all_games = self.db.get_games(with_expansions)
 
-        self.client.upload_points(
+        self.client.upsert(
             collection_name="games",
             points=[
                 PointStruct(
