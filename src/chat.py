@@ -269,7 +269,7 @@ def run(
 
     game_models = []
     for r in search_result:
-        if r.score < 0.5:
+        if r.score < 0.4:
             continue
         game = all_games_dict.get(r.id)
         if game:
