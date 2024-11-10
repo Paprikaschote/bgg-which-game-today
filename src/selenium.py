@@ -1,16 +1,20 @@
+import os
 import sys
 
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.service import Service
 
-CHROMEDRIVER_PATH = r"/home/cavoe/devel/private-llm/driver/chromedriver"
+CHROMEDRIVER_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "driver",
+    "chromedriver",
+)
 
 sys.path.insert(0, CHROMEDRIVER_PATH)
 
 
 class Selenium:
-    CHROMEDRIVER_PATH = r"/home/cavoe/devel/private-llm/driver/chromedriver"
 
     def __init__(self, url: str):
         self.url = url
@@ -18,7 +22,7 @@ class Selenium:
         self._create_driver()
 
     def _create_driver(self):
-        service = Service(executable_path=self.CHROMEDRIVER_PATH)
+        service = Service(executable_path=CHROMEDRIVER_PATH)
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
@@ -34,9 +38,4 @@ class Selenium:
             rendered_html = ""
         finally:
             self.driver.quit()
-            
         return rendered_html
-
-    def get_html_content2(self) -> str:
-        self.driver.get(self.url)
-        return self.driver

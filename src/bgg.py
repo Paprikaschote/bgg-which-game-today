@@ -10,11 +10,16 @@ from .selenium import Selenium
 
 
 class BGG:
+    bgg_domain = "https://boardgamegeek.com"
+
     def __init__(self, bgg_username: str, verbose: bool = False):
-        self.bgg_domain = "https://boardgamegeek.com"
         self.bgg_username = bgg_username
         self.games = []
         self.verbose = verbose
+        self.game_db_ids = []
+
+    def set_db_bgg_ids(self, game_ids: List[int]) -> None:
+        self.game_db_ids = game_ids
 
     def check(self, soup: BeautifulSoup) -> Union[Exception, None]:
         error = soup.find("div", class_="messagebox error")
@@ -31,7 +36,7 @@ class BGG:
         table = soup.find("table", {"id": "collectionitems"})
         game_urls = [
             (
-                a_tag["href"].split("/")[2],
+                int(a_tag["href"].split("/")[2]),
                 a_tag.text,
                 f"{self.bgg_domain}{a_tag['href']}",
             )
@@ -68,7 +73,7 @@ class BGG:
                     )
                 )
                 if self.verbose:
-                    print(f"Known {category_name}: {classification['name']}")
+                    print(f"Skip known {category_name}: {classification['name']}")
                 continue
 
             bgg_url = f"{self.bgg_domain}{link['href']}"
@@ -93,7 +98,12 @@ class BGG:
                         print(f"New {category_name}: {name}")
         return classifications
 
-    def _get_data_from_detail_page(self, bgg_id: int, title: str, bgg_url: str) -> Game:
+    def _get_data_from_detail_page(self, bgg_id: int, title: str, bgg_url: str) -> None:
+        if bgg_id in self.game_db_ids:
+            if self.verbose:
+                print(f"Skip known game: {title}")
+            return
+
         if self.verbose:
             print(f"Getting data from {bgg_url}")
         rendered_html = Selenium(bgg_url).get_html_content()

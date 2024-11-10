@@ -188,23 +188,9 @@ class Database:
         )
         return self.db_cursor.fetchone()
 
-    def get_type_names(self, bgg_id: int):
-        self.db_cursor.execute(
-            f"SELECT name FROM type WHERE bgg_id IN (SELECT type_id FROM game_type WHERE bgg_id = {bgg_id})"
-        )
-        return self.db_cursor.fetchall()
-
-    def get_category_names(self, bgg_id: int):
-        self.db_cursor.execute(
-            f"SELECT name FROM category WHERE bgg_id IN (SELECT category_id FROM game_category WHERE bgg_id = {bgg_id})"
-        )
-        return self.db_cursor.fetchall()
-
-    def get_mechanism_names(self, bgg_id: int):
-        self.db_cursor.execute(
-            f"SELECT name FROM mechanism WHERE bgg_id IN (SELECT mechanism_id FROM game_mechanism WHERE bgg_id = {bgg_id})"
-        )
-        return self.db_cursor.fetchall()
+    def get_game_ids(self):
+        self.db_cursor.execute("SELECT bgg_id FROM game")
+        return [entry["bgg_id"] for entry in self.db_cursor.fetchall()]
 
     def get_games(self, with_expansions: bool = False) -> List[Game]:
         with_expansions = int(with_expansions)
@@ -241,27 +227,40 @@ class Database:
                 ]
             if row["types"]:
                 types = [
-                    Type(int(typ.split(":")[0]), typ.split(":")[1])
-                    for typ in row["types"].split(",")
+                    Type(int(game_type.split(":")[0]), game_type.split(":")[1])
+                    for game_type in row["types"].split(",")
                 ]
             if row["mechanisms"]:
                 mechanisms = [
                     Mechanism(int(mech.split(":")[0]), mech.split(":")[1])
                     for mech in row["mechanisms"].split(",")
                 ]
+            description = row[
+                "description"
+            ] or "{title}, {minp}-{maxp}, {minpt}-{maxpt}, {types}, {categories}, {mechanisms}".format(
+                title=row["title"],
+                minp=row["min_players"],
+                maxp=row["max_players"],
+                minpt=row["min_playtime"],
+                maxpt=row["max_playtime"],
+                types=", ".join([game_type.name for game_type in types]),
+                categories=", ".join([category.name for category in categories]),
+                mechanisms=", ".join([mechanism.name for mechanism in mechanisms]),
+            )
+
             game = Game(
-                bgg_id=row[0],
-                title=row[1],
-                description=row[2],
-                year=row[3],
-                bgg_rating=row[4],
-                complexity=row[5],
-                bgg_url=row[6],
-                image_url=row[7],
-                min_players=row[8],
-                max_players=row[9],
-                min_playtime=row[10],
-                max_playtime=row[11],
+                bgg_id=row["bgg_id"],
+                title=row["title"],
+                description=description,
+                year=row["year"],
+                bgg_rating=row["bgg_rating"],
+                complexity=row["complexity"],
+                bgg_url=row["bgg_url"],
+                image_url=row["image_url"],
+                min_players=row["min_players"],
+                max_players=row["max_players"],
+                min_playtime=row["min_playtime"],
+                max_playtime=row["max_playtime"],
                 categories=categories,
                 types=types,
                 mechanisms=mechanisms,

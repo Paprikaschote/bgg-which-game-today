@@ -75,6 +75,11 @@ class Game:
         self.categories = categories if categories is not None else []
         self.mechanisms = mechanisms if mechanisms is not None else []
 
+    @property
+    def data_for_vectorization(self) -> str:
+        data = self.types + self.categories + self.mechanisms
+        return ", ".join([item.name for item in data])
+
     def to_dict(self, show_description: bool = True) -> Dict:
         game_dict = {
             "bgg_id": self.bgg_id,

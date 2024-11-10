@@ -27,10 +27,10 @@ def parse_args():
         help="Skip the detailed chat summary and provide quick game recommendations.",
     )
     parser.add_argument(
-        "-s",
-        "--skip",
+        "-r",
+        "--refresh",
         action="store_true",
-        help="Skip already known BGG pages.",
+        help="Refresh data of already known BGG pages.",
     )
     parser.add_argument(
         "mode",
@@ -45,7 +45,7 @@ def main():
     config = {
         "verbose": args.verbose,
         "fast": args.fast,
-        "skip": args.skip,
+        "refresh": args.refresh,
         "mode": args.mode,
         "expansions": args.expansions,
     }
