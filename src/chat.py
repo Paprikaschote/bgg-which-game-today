@@ -160,7 +160,7 @@ class PrepareChat(Chat):
     def search_result(self):
         search_result = self.client.search(
             collection_name="games",
-            limit=3,
+            limit=5,
             query_filter=models.Filter(
                 must=[
                     models.Filter(
@@ -182,7 +182,7 @@ class PrepareChat(Chat):
         if not search_result:
             search_result = self.client.search(
                 collection_name="games",
-                limit=3,
+                limit=5,
                 query_filter=models.Filter(
                     must=self.filter_players_playtime,
                     should=[
@@ -198,7 +198,7 @@ class PrepareChat(Chat):
             if not search_result:
                 search_result = self.client.search(
                     collection_name="games",
-                    limit=3,
+                    limit=5,
                     query_filter=models.Filter(must=self.filter_players_playtime),
                     query_vector=self.model.encode(
                         ", ".join(self.json_content["genre"])
