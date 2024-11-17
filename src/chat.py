@@ -9,6 +9,7 @@ from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 
 from .db import Database
+from .qdrant import Qdrant
 
 NO_GAME_FOUND_MSG = "No suitable game models were found based on your request."
 
@@ -66,10 +67,10 @@ class Chat:
 
 class PrepareChat(Chat):
     def __init__(
-        self, client: QdrantClient, model: SentenceTransformer, verbose: bool = False
+        self, qdrant: Qdrant, model: SentenceTransformer, verbose: bool = False
     ):
         super().__init__(verbose)
-        self.client = client
+        self.qdrant = qdrant
         self.model = model
         self.json_content = {}
         self.filter_players_playtime = []
@@ -158,52 +159,78 @@ class PrepareChat(Chat):
                 )
 
     def search_result(self):
-        search_result = self.client.search(
-            collection_name="games",
-            limit=5,
-            query_filter=models.Filter(
-                must=[
-                    models.Filter(
-                        must=self.filter_players_playtime,
-                    ),
-                    models.Filter(
-                        should=self.filter_complexity,
-                    ),
-                    models.Filter(
-                        should=self.filter_categories,
-                    ),
-                ],
-            ),
-            query_vector=self.model.encode(
+        if "genre" in self.json_content:
+            query_vector = self.model.encode(
                 ", ".join(self.json_content["genre"])
-            ).tolist(),
-        )
+            ).tolist()
 
-        if not search_result:
-            search_result = self.client.search(
-                collection_name="games",
-                limit=5,
+            search_result = self.qdrant.client_search(
                 query_filter=models.Filter(
-                    must=self.filter_players_playtime,
-                    should=[
-                        models.Filter(should=self.filter_complexity),
-                        models.Filter(should=self.filter_categories),
+                    must=[
+                        models.Filter(
+                            must=self.filter_players_playtime,
+                        ),
+                        models.Filter(
+                            should=self.filter_complexity,
+                        ),
+                        models.Filter(
+                            should=self.filter_categories,
+                        ),
                     ],
                 ),
-                query_vector=self.model.encode(
-                    ", ".join(self.json_content["genre"])
-                ).tolist(),
+                query_vector=query_vector,
             )
-
             if not search_result:
-                search_result = self.client.search(
-                    collection_name="games",
-                    limit=5,
-                    query_filter=models.Filter(must=self.filter_players_playtime),
-                    query_vector=self.model.encode(
-                        ", ".join(self.json_content["genre"])
-                    ).tolist(),
+                search_result = self.qdrant.client_search(
+                    query_filter=models.Filter(
+                        must=self.filter_players_playtime,
+                        should=[
+                            models.Filter(should=self.filter_complexity),
+                            models.Filter(should=self.filter_categories),
+                        ],
+                    ),
+                    query_vector=query_vector,
                 )
+
+                if not search_result:
+                    search_result = self.qdrant.client_search(
+                        query_filter=models.Filter(must=self.filter_players_playtime),
+                        query_vector=query_vector,
+                    )
+
+        else:
+            search_result = self.qdrant.client_scroll(
+                scroll_filter=models.Filter(
+                    must=[
+                        models.Filter(
+                            must=self.filter_players_playtime,
+                        ),
+                        models.Filter(
+                            should=self.filter_complexity,
+                        ),
+                        models.Filter(
+                            should=self.filter_categories,
+                        ),
+                    ],
+                ),
+            )
+            if not search_result:
+                search_result = self.qdrant.client_scroll(
+                    query_filter=models.Filter(
+                        must=self.filter_players_playtime,
+                        should=[
+                            models.Filter(should=self.filter_complexity),
+                            models.Filter(should=self.filter_categories),
+                        ],
+                    ),
+                )
+
+                if not search_result:
+                    search_result = self.qdrant.client_scroll(
+                        query_filter=models.Filter(must=self.filter_players_playtime),
+                    )
+            search_result = search_result[0]
+
         if self.verbose:
             print(search_result)
         return search_result
@@ -219,7 +246,8 @@ def run(
 ):
     all_games_dict = {game.bgg_id: game for game in db.get_games(with_expansions)}
 
-    prepare_chat = PrepareChat(client, model, verbose)
+    qdrant = Qdrant(client, db, model, verbose)
+    prepare_chat = PrepareChat(qdrant, model, verbose)
     prepare_chat.check()
 
     prepare_prompt = """Your sole responsibility is to analyze the user's prompt and extract relevant information to enhance board game search capabilities. Respond exclusively with a JSON object following the schema below, filling in the values based on the user's statement. Do not include any additional text or explanations. If no relevant data is available, remove the key from the json. At the end no None values should be present in the JSON object and the json object must be valid and loadable in the python function json.loads().
@@ -257,6 +285,7 @@ def run(
         print("Prepare Search: ", response_content)
 
     prepare_chat.read_filter(response_content)
+
     search_result = prepare_chat.search_result()
 
     language = prepare_chat.get_language()
@@ -269,7 +298,7 @@ def run(
 
     game_models = []
     for r in search_result:
-        if r.score < 0.4:
+        if "score" in r and r.score < 0.4:
             continue
         game = all_games_dict.get(r.id)
         if game:
